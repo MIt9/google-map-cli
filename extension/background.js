@@ -1,4 +1,4 @@
-// Google Maps MCP Bridge — service worker.
+// Google Maps CLI Bridge — service worker.
 // Talks to the local MCP server over WebSocket and reads Google Maps in ONE dedicated background tab with
 // chrome.scripting.executeScript (no debugger). Read-only: nothing is posted, clicked-through or submitted.
 

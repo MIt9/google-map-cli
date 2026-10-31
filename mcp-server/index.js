@@ -57,7 +57,7 @@ const waiters = new Map(); // jobId -> fn(job) for sync callers
 
 const logAction = (e) => {
   try { fs.mkdirSync(DIR, { recursive: true }); fs.appendFileSync(ACTIONS_FILE, JSON.stringify(e) + '\n'); } catch (err) {
-    console.error(`[gmaps-mcp] action log failed: ${err.message}`);
+    console.error(`[gmaps-cli] action log failed: ${err.message}`);
   }
 };
 
@@ -146,7 +146,7 @@ async function pump() {
   const at = q.wakeAt();
   if (at && ready()) wake = setTimeout(kick, Math.min(Math.max(at - Date.now(), 1000), 2 ** 31 - 1)).unref();
 }
-const kick = () => pump().catch((e) => console.error(`[gmaps-mcp] worker: ${e.stack}`));
+const kick = () => pump().catch((e) => console.error(`[gmaps-cli] worker: ${e.stack}`));
 
 function runSync(tool, args, { priority = 1, parent } = {}) {
   const job = q.enqueue({ tool, args, priority, parent });
@@ -198,7 +198,7 @@ function listen() {
   wss.on('listening', () => {
     wsError = null;
     try { fs.mkdirSync(DIR, { recursive: true }); fs.writeFileSync(pidFile, String(process.pid), { mode: 0o600 }); } catch {}
-    console.error('[gmaps-mcp] primary');
+    console.error('[gmaps-cli] primary');
     if (!q) q = new Queue().load(); // recovery of jobs left running happens here
     kick();
   });
@@ -230,7 +230,7 @@ function listen() {
       if (own) return joinHub();
     }
     wsError = e.message;
-    console.error(`[gmaps-mcp] WebSocket error: ${wsError}`);
+    console.error(`[gmaps-cli] WebSocket error: ${wsError}`);
     setTimeout(listen, 5000);
   });
   wss.on('connection', (ws, req) => (req.url === '/peer' ? onPeer(ws) : onConnection(ws)));
@@ -249,7 +249,7 @@ function settle(msg) {
 
 function joinHub() {
   const ws = new WebSocket(`ws://127.0.0.1:${PORT}/peer`);
-  ws.on('open', () => { hub = ws; wsError = null; console.error('[gmaps-mcp] peer of the primary server'); });
+  ws.on('open', () => { hub = ws; wsError = null; console.error('[gmaps-cli] peer of the primary server'); });
   ws.on('message', (raw) => {
     const msg = JSON.parse(raw);
     if (msg.type === 'state') hubState = msg;
@@ -286,14 +286,14 @@ function onPeer(ws) {
 function onConnection(ws) {
   ext = ws;
   extVersion = null;
-  console.error('[gmaps-mcp] extension connected');
+  console.error('[gmaps-cli] extension connected');
   ws.send(JSON.stringify({ type: 'hello', version: VERSION }));
   ws.on('message', (raw) => {
     const msg = JSON.parse(raw);
     if (msg.type === 'hello') {
       extVersion = msg.version;
       extHalted = msg.halted || null;
-      console.error(`[gmaps-mcp] extension ${extVersion}, server ${VERSION}`);
+      console.error(`[gmaps-cli] extension ${extVersion}, server ${VERSION}`);
     } else if (msg.type === 'halted') extHalted = msg.reason || null; // popup Resume sends null
     else return settle(msg);
     broadcast();
@@ -734,7 +734,7 @@ server.registerTool('gmaps_download_place', {
 }, tool(prepped('downloadPlace')));
 
 server.registerTool('gmaps_find_leads', {
-  description: 'Lead generation: for each area search "<query> in <area>", open every card without a real website, classify no_website | social_only (facebook/instagram/linktr.ee/tiktok/wa.me/g.page...) | weak_website (site-builder/template subdomains like wixsite.com, tilda.ws, business.site, sites.google.com, *.prom.ua, and booking-only pages like booksy.com, alteg.io) | has_website (shortener links are resolved first), and save the first three as leads to ~/.gmaps-mcp/leads.jsonl (status "new"; already tracked places are not re-opened). Places whose address is outside the area are dropped (strictArea, stats.outOfArea). Instead of areas you can pass center + radiusKm: the viewport of the circle is searched in tiles and places beyond the radius are dropped (stats.outOfRadius); leads get distanceKm. Each lead gets leadScore (0-100: no website 40, reviews up to 30, rating up to 15, unclaimed 10, phone 5, recent reviews +5, none for a year -15, owner replies +5; closed 0) and leadReasons; leads are sorted by score, then reviews. Slow: ~5-10 s per place. For many areas use gmaps_enqueue with tool "findLeads" and read the result with gmaps_queue get.',
+  description: 'Lead generation: for each area search "<query> in <area>", open every card without a real website, classify no_website | social_only (facebook/instagram/linktr.ee/tiktok/wa.me/g.page...) | weak_website (site-builder/template subdomains like wixsite.com, tilda.ws, business.site, sites.google.com, *.prom.ua, and booking-only pages like booksy.com, alteg.io) | has_website (shortener links are resolved first), and save the first three as leads to ~/.gmaps-cli/leads.jsonl (status "new"; already tracked places are not re-opened). Places whose address is outside the area are dropped (strictArea, stats.outOfArea). Instead of areas you can pass center + radiusKm: the viewport of the circle is searched in tiles and places beyond the radius are dropped (stats.outOfRadius); leads get distanceKm. Each lead gets leadScore (0-100: no website 40, reviews up to 30, rating up to 15, unclaimed 10, phone 5, recent reviews +5, none for a year -15, owner replies +5; closed 0) and leadReasons; leads are sorted by score, then reviews. Slow: ~5-10 s per place. For many areas use gmaps_enqueue with tool "findLeads" and read the result with gmaps_queue get.',
   inputSchema: {
     query: z.string().min(1).describe('e.g. "dentist"'),
     areas: z.array(z.string()).max(30).optional().describe('e.g. ["Lviv", "Kyiv"]. Give exactly one of areas or center + radiusKm'),
@@ -771,7 +771,7 @@ server.registerTool('gmaps_place_at', {
 }, tool(prepped('placeAt')));
 
 server.registerTool('gmaps_leads', {
-  description: 'Local lead tracker (~/.gmaps-mcp/leads.jsonl, no browser). list: leads, optionally by status. update: set newStatus and/or note on lead `id`. Check this before contacting anyone so no business is contacted twice.',
+  description: 'Local lead tracker (~/.gmaps-cli/leads.jsonl, no browser). list: leads, optionally by status. update: set newStatus and/or note on lead `id`. Check this before contacting anyone so no business is contacted twice.',
   inputSchema: {
     action: z.enum(['list', 'update']),
     status: z.enum(STATUSES).optional().describe('list filter'),
@@ -853,7 +853,7 @@ server.registerTool('gmaps_enqueue', {
 }));
 
 server.registerTool('gmaps_queue', {
-  description: 'Inspect the action queue. list: jobs newest first (optionally by status), get: one job with its result, cancel: cancel a queued job (a running one cannot be stopped). Statuses: queued, running, done, failed, unverified (a click that may have happened), cancelled. Steps of composite jobs have `parent`. The attempt log is ~/.gmaps-mcp/actions.jsonl.',
+  description: 'Inspect the action queue. list: jobs newest first (optionally by status), get: one job with its result, cancel: cancel a queued job (a running one cannot be stopped). Statuses: queued, running, done, failed, unverified (a click that may have happened), cancelled. Steps of composite jobs have `parent`. The attempt log is ~/.gmaps-cli/actions.jsonl.',
   inputSchema: {
     action: z.enum(['list', 'get', 'cancel']),
     id: z.number().int().optional().describe('Job id for get / cancel'),
