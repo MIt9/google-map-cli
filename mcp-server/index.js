@@ -23,7 +23,7 @@ function readConfigPort() {
   return null;
 }
 const PORT = Number(process.env.GMAPS_CLI_WS_PORT) || readConfigPort() || 47832;
-const API_PORT = Number(process.env.GMAPS_CLI_API_PORT) || readConfigPort() || 47833;
+const API_PORT = Number(process.env.GMAPS_CLI_API_PORT) || 47833;
 const pidFile = `${DIR}/service.pid`;
 // Must equal extension/manifest.json "version"; bump both together on every change.
 const VERSION = JSON.parse(fs.readFileSync(new URL('./package.json', import.meta.url))).version;
