@@ -66,7 +66,33 @@ function fail(e) {
 }
 try {
   if (!command || command === '--help' || command === '-h') {
-    console.log('Usage: gmaps <command> [--option value] [--json JSON]\nCommands: service-start, service-stop, doctor, config, ' + commands.join(', ') + '\nRun gmaps <command> --help for details.');
+    console.log('Usage: gmaps <command> [--option value] [--json JSON]\nCommands: service-start, service-stop, doctor, config, extension, ' + commands.join(', ') + '\nRun gmaps <command> --help for details.');
+  } else if (command === 'extension') {
+    const sub = args.shift();
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const os = await import('node:os');
+    const dir = process.env.GMAPS_CLI_DIR || path.join(os.homedir(), '.gmaps-cli');
+    const src = path.join(import.meta.dirname, '..', 'extension');
+    const dest = path.join(dir, 'extension');
+    if (sub === 'path') {
+      const out = { path: dest };
+      console.log(textMode ? renderText(out) : JSON.stringify(out, null, 2));
+    } else if (sub === 'install') {
+      const openFlag = args.includes('--open');
+      fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+      if (fs.existsSync(dest)) fs.rmSync(dest, { recursive: true, force: true });
+      fs.cpSync(src, dest, { recursive: true });
+      const manifest = JSON.parse(fs.readFileSync(path.join(dest, 'manifest.json'), 'utf8'));
+      const out = { installed: true, path: dest, version: manifest.version, id: 'elbbbfcekpbhppngkhhpmfmlbidmkodc', steps: ['Open chrome://extensions', 'Enable Developer mode', 'Load unpacked -> select the path above'] };
+      console.log(textMode ? renderText(out) : JSON.stringify(out, null, 2));
+      if (openFlag) {
+        const { exec } = await import('node:child_process');
+        exec('open "chrome://extensions"');
+      }
+    } else {
+      console.log('Usage: gmaps extension install [--open] | path');
+    }
   } else if (command === 'doctor') {
     const fs = await import('node:fs');
     const path = await import('node:path');
