@@ -34,7 +34,7 @@ test('service-stop refuses to interrupt a running browser job', async () => {
     }
     socket = new WebSocket(`ws://127.0.0.1:${port + 1000}`, { origin: 'chrome-extension://test' });
     await new Promise((resolve, reject) => { socket.once('open', resolve); socket.once('error', reject); });
-    socket.send(JSON.stringify({ type: 'hello', version: '0.1.30' }));
+    socket.send(JSON.stringify({ type: 'hello', version: '0.1.31' }));
     const action = new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error('No browser job received')), 5000);
       socket.on('message', bytes => {
