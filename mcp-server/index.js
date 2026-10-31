@@ -661,7 +661,8 @@ server.registerTool('gmaps_status', {
   description: 'Bridge health: server and extension versions, whether they match, connection state, role (primary/peer), halted state (captcha/consent wall: resolve in the Maps tab, press Resume in the popup).',
 }, tool(async () => {
   const l = link();
-  return { server: VERSION, extension: l.version, match: l.version === VERSION, connected: l.connected, role: l.role, halted: l.halted, wsError, dir: DIR, extensionUrl: `ws://127.0.0.1:${PORT}` };
+  const sameMinor = (a, b) => String(a).split('.').slice(0, 2).join('.') === String(b).split('.').slice(0, 2).join('.');
+  return { server: VERSION, extension: l.version, match: sameMinor(l.version, VERSION), connected: l.connected, role: l.role, halted: l.halted, wsError, dir: DIR, extensionUrl: `ws://127.0.0.1:${PORT}` };
 }));
 
 // gmaps_search with center + radiusKm: search at that map position, add distanceKm, drop cards beyond the radius, sort by distance.
