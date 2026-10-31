@@ -950,6 +950,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
     connect();
   }
 });
-chrome.runtime.onMessage.addListener((msg) => { if (msg === 'reconnect') connect(); });
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg === 'reconnect') connect();
+  if (msg && msg.type === 'reload') chrome.runtime.reload();
+});
 setConnected(false);
 connect();
