@@ -2,6 +2,12 @@
 
 Local CLI, service, and Chrome extension for Google Maps lead research. The CLI and service use JSON; Chrome provides the existing Maps session. This is a separate copy from the original MCP project.
 
+## Quick install
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/MIt9/google-map-cli/refs/heads/main/install.sh | sh
+```
+
 ## Install and start
 
 Requires Node.js 20+ and Chrome. In `mcp-server/`, run `npm ci`, then `npm link`. In Chrome open `chrome://extensions`, enable Developer mode, and load the project's `extension/` directory unpacked. Run `gmaps service-start`, then `gmaps status`. The extension retries every 30 seconds; use its Reconnect button to connect immediately.
