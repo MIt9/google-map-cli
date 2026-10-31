@@ -73,7 +73,12 @@ try {
     const path = await import('node:path');
     const manifest = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '..', 'extension', 'manifest.json'), 'utf8'));
     const pkg = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '..', 'package.json'), 'utf8'));
-    const out = { current: pkg.version, extension: manifest.version, match: pkg.version === manifest.version, checkOnly: check };
+    let latest = null;
+    try {
+      const r = await fetch('https://api.github.com/repos/MIt9/google-map-cli/releases/latest');
+      if (r.ok) { const j = await r.json(); latest = j.tag_name; }
+    } catch {}
+    const out = { current: pkg.version, extension: manifest.version, match: pkg.version === manifest.version, latest, checkOnly: check, hint: latest && latest !== 'v' + pkg.version ? 'New version available; git pull && npm ci' : null };
     console.log(textMode ? renderText(out) : JSON.stringify(out, null, 2));
   } else if (command === 'extension') {
     const sub = args.shift();

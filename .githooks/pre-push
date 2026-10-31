@@ -1,0 +1,25 @@
+#!/bin/sh
+# Runs only on v* tags.
+while read local_ref local_sha remote_ref remote_sha; do
+  case "$local_ref" in
+    refs/tags/v*) ;;
+    *) continue ;;
+  esac
+  VERSION=$(node -p "require('./mcp-server/package.json').version")
+  TAG=${local_ref#refs/tags/v}
+  if [ "$TAG" != "$VERSION" ]; then
+    echo "Tag $TAG != package version $VERSION" >&2
+    exit 1
+  fi
+  MANIFEST=$(node -p "require('./extension/manifest.json').version")
+  if [ "$MANIFEST" != "$VERSION" ]; then
+    echo "Manifest version $MANIFEST != package version $VERSION" >&2
+    exit 1
+  fi
+  if [ -n "$(git status --porcelain)" ]; then
+    echo "Working tree not clean" >&2
+    exit 1
+  fi
+  (cd mcp-server && node --test) || exit 1
+done
+exit 0
