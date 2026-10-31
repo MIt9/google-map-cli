@@ -66,7 +66,40 @@ function fail(e) {
 }
 try {
   if (!command || command === '--help' || command === '-h') {
-    console.log('Usage: gmaps <command> [--option value] [--json JSON]\nCommands: service-start, service-stop, config, ' + commands.join(', ') + '\nRun gmaps <command> --help for details.');
+    console.log('Usage: gmaps <command> [--option value] [--json JSON]\nCommands: service-start, service-stop, doctor, config, ' + commands.join(', ') + '\nRun gmaps <command> --help for details.');
+  } else if (command === 'doctor') {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const os = await import('node:os');
+    const dir = process.env.GMAPS_CLI_DIR || path.join(os.homedir(), '.gmaps-cli');
+    const checks = [];
+    // Chrome presence
+    const chromePaths = ['/Applications/Google Chrome.app', '/usr/bin/google-chrome', '/usr/bin/chromium-browser'];
+    checks.push({ check: 'chrome', ok: chromePaths.some(p => fs.existsSync(p)), fix: 'Install Google Chrome' });
+    // dir permissions
+    try {
+      const st = fs.statSync(dir);
+      checks.push({ check: 'stateDir', ok: (st.mode & 0o777) === 0o700, fix: `chmod 700 ${dir}` });
+    } catch {
+      checks.push({ check: 'stateDir', ok: false, fix: `mkdir -p ${dir} && chmod 700 ${dir}` });
+    }
+    // service
+    let status = null;
+    try {
+      const r = await fetch(`${api}/commands`);
+      if (r.ok) {
+        status = await (await fetch(`${api}/call`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'gmaps_status', args: {} }) })).json();
+      }
+    } catch {}
+    checks.push({ check: 'service', ok: !!status, fix: 'Run gmaps service-start' });
+    if (status) {
+      checks.push({ check: 'versionMatch', ok: status.match, fix: 'Reload extension / update service so versions match' });
+      checks.push({ check: 'extensionConnected', ok: status.connected, fix: 'Open Chrome, load unpacked extension, click Reconnect' });
+    }
+    const allOk = checks.every(c => c.ok);
+    const out = { ok: allOk, checks };
+    console.log(textMode ? renderText(out) : JSON.stringify(out, null, 2));
+    if (!allOk) process.exitCode = 1;
   } else if (command === 'config') {
     const sub = args.shift();
     const fs = await import('node:fs');
