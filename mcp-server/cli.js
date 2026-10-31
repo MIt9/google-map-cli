@@ -66,7 +66,36 @@ function fail(e) {
 }
 try {
   if (!command || command === '--help' || command === '-h') {
-    console.log('Usage: gmaps <command> [--option value] [--json JSON]\nCommands: service-start, service-stop, ' + commands.join(', ') + '\nRun gmaps <command> --help for details.');
+    console.log('Usage: gmaps <command> [--option value] [--json JSON]\nCommands: service-start, service-stop, config, ' + commands.join(', ') + '\nRun gmaps <command> --help for details.');
+  } else if (command === 'config') {
+    const sub = args.shift();
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const os = await import('node:os');
+    const dir = process.env.GMAPS_CLI_DIR || path.join(os.homedir(), '.gmaps-cli');
+    const cfgPath = path.join(dir, 'config.json');
+    function readCfg() { try { return JSON.parse(fs.readFileSync(cfgPath, 'utf8')); } catch { return {}; } }
+    function writeCfg(c) { fs.mkdirSync(dir, { recursive: true, mode: 0o700 }); fs.writeFileSync(cfgPath, JSON.stringify(c, null, 2), { mode: 0o600 }); }
+    if (sub === 'get') {
+      const c = readCfg(); const out = { port: c.port ?? null };
+      console.log(textMode ? renderText(out) : JSON.stringify(out, null, 2));
+    } else if (sub === 'set') {
+      const key = args.shift(); const val = args.shift();
+      if (key !== 'port') throw new Error('Only "port" is supported');
+      const port = Number(val);
+      if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Port must be 1-65535');
+      const c = readCfg(); c.port = port; writeCfg(c);
+      const out = { port };
+      console.log(textMode ? renderText(out) : JSON.stringify(out, null, 2));
+    } else if (sub === 'unset') {
+      const key = args.shift();
+      if (key !== 'port') throw new Error('Only "port" is supported');
+      const c = readCfg(); delete c.port; writeCfg(c);
+      const out = { port: null };
+      console.log(textMode ? renderText(out) : JSON.stringify(out, null, 2));
+    } else {
+      console.log('Usage: gmaps config get|set|unset port [value]');
+    }
   } else if ((command === 'service-start' || command === 'service-stop') && (args.includes('--help') || args.includes('-h'))) {
     console.log(`Usage: gmaps ${command}\n${command === 'service-start' ? 'Start the local service if it is not running.' : 'Stop the service when no jobs or requests are active; queued jobs remain saved.'}`);
   } else if (command === 'service-stop') {
