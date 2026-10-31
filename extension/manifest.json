@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Google Maps CLI Bridge",
-  "version": "0.1.14",
+  "version": "0.1.15",
   "description": "Connects the local Google Maps CLI service to a background Maps tab.",
   "permissions": ["tabs", "scripting", "alarms", "storage"],
   "host_permissions": ["https://www.google.com/*", "https://consent.google.com/*"],
@@ -19,5 +19,6 @@
       "16": "icons/icon16.png",
       "32": "icons/icon32.png"
     }
-  }
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnS2FZAprCidghZSiGzneraYwcQMnQLtZVVrTa/nmaN/LrvlMN3SWYbD8TwGByLYO0iAeftHabdtIKicjTiDcbr82QSjWNCBDUQrOA0Nx2UXrBWpuTQu8pwaGZS0hZepQHE8tV1cpIdoy1oFDiDGIdSvwdIh3D+M9hX/XLalDgjpcuNH1vWigbIXEXYOyKMfaCNZmdc2b3stT9/hfb5bk7S1OuVJGisR2P89SH+4K5COnzMxcBcwEZlKM2pefIV/rViaeoL3xKD4LBKe0rWHuXpUY+MAdR3lJKVdrQEohRlt4U2wwHQkKcOx5x7mR3PIoOKNhhpL8wOH0HH0NEQqpgwIDAQAB"
 }
