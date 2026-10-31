@@ -8,20 +8,18 @@ description: How to drive the `gmaps` CLI (local service + Chrome extension) to 
 CLI's `--help` is the source of truth; this skill only mirrors it. Verify every flag against `gmaps <command> --help` before use.
 
 ## Before working
-- Run `gmaps service-start`, then `gmaps status` (versions must match; extension connected).
+- Run `gmaps service-start`, then `gmaps status` (versions must match by major.minor; extension connected).
 - Run `gmaps doctor` if anything fails; each failed check has a `fix`.
-- If halted (captcha/consent): solve in Chrome, press Resume in extension, then continue.
+- If halted (captcha/consent): solve in Chrome, press Resume in the extension, then continue.
 
 ## Output format for the agent
 - No TTY in the agent shell → JSON on stdout; errors are JSON on stderr with nonzero exit code.
 - Force text with `--text` or `GMAPS_CLI_FORMAT=text`.
 
-## Safety rules for actions
-- Preview first: run without `--confirm` where applicable, show preview, get explicit user "yes" for that item, then `--confirm`.
-- Never confirm on the agent's own; never batch invisible actions.
-- `RATE_LIMIT`: wait, do not loop.
-- `HALT`: stop; only the user resumes.
-- `unverified`: do not retry; inspect external state first.
+## Safety rules
+- Queue jobs run sequentially; `queue cancel` only cancels queued work.
+- A click/scroll after an interrupted job becomes `unverified`: inspect the page before repeating.
+- HALT stops the queue; only the user resumes in the extension.
 
 ## Typical scenarios
 - Search: `gmaps search --query 'barbers in Lviv' --limit 20`
