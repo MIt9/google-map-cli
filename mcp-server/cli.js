@@ -7,13 +7,19 @@ const api = `http://127.0.0.1:${Number(process.env.GMAPS_CLI_API_PORT) || 47833}
 // Format selection: --text (global) -> GMAPS_CLI_FORMAT -> TTY -> text, else JSON.
 const rawArgs = process.argv.slice(2);
 let forcedText = false;
+let forcedJson = false;
 const args = [];
-for (const a of rawArgs) {
+for (let i = 0; i < rawArgs.length; i++) {
+  const a = rawArgs[i];
   if (a === '--text') { forcedText = true; continue; }
+  if (a === '--json') { forcedJson = true; continue; }
   args.push(a);
 }
+// precedence
+if (forcedJson && forcedText) { console.error('Error: --json and --text cannot be used together'); process.exit(2); }
 const envFmt = process.env.GMAPS_CLI_FORMAT;
 let textMode = forcedText;
+if (forcedJson) textMode = false;
 if (envFmt === 'text') textMode = true;
 else if (envFmt === 'json') textMode = false;
 else if (envFmt == null || envFmt === '') textMode = textMode || !!process.stdout.isTTY;
@@ -66,7 +72,7 @@ function fail(e) {
 }
 try {
   if (!command || command === '--help' || command === '-h') {
-    console.log('Usage: gmaps <command> [--option value] [--json JSON]\nCommands: service-start, service-stop, doctor, config, update, extension, ' + commands.join(', ') + '\nRun gmaps <command> --help for details.');
+    console.log('Usage: gmaps <command> [--option value] [--input JSON] [--json|--text]\nCommands: service-start, service-stop, doctor, config, update, extension, ' + commands.join(', ') + '\nRun gmaps <command> --help for details.');
   } else if (command === 'update') {
     const check = args.includes('--check');
     const fs = await import('node:fs');
@@ -205,13 +211,14 @@ try {
         const bounds = [s.minimum != null ? `min ${s.minimum}` : '', s.maximum != null ? `max ${s.maximum}` : '', s.maxItems != null ? `max ${s.maxItems} items` : ''].filter(Boolean).join(', ');
         console.log(`  --${opt.key.replace(/[A-Z]/g, x => '-' + x.toLowerCase())} <${type}>${opt.required ? ' (required)' : ''}${bounds ? ` [${bounds}]` : ''}  ${clean(opt.description || s.description)}`);
       }
-      console.log('  --json <object>  Provide the complete command arguments as JSON.');
+      console.log('  --input <object>  Provide the complete command arguments as JSON.');
+      console.log('  --json/--text  Force output format (global).');
     } else {
       let input = {};
       while (args.length) {
         const flag = args.shift();
         if (!flag.startsWith('--')) throw new Error(`Expected option, got ${flag}`);
-        if (flag === '--json' || (flag === '--args' && command !== 'enqueue')) { const v = args.shift(); input = { ...input, ...JSON.parse(v) }; continue; }
+        if (flag === '--input' || (flag === '--args' && command !== 'enqueue')) { const v = args.shift(); input = { ...input, ...JSON.parse(v) }; continue; }
         if (flag === '--args' && command === 'enqueue') {
           const v = JSON.parse(args.shift());
           if (v && typeof v === 'object' && 'tool' in v && 'args' in v) input = { ...input, ...v }; // legacy whole-command form
