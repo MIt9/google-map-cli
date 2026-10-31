@@ -3,7 +3,49 @@ import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 const commands = ['status','search','get-place','get-reviews','get-photos','download-place','find-leads','competitors','place-at','leads','check-website','export-leads','snapshot','read-page','click','scroll','enqueue','queue'];
 const api = `http://127.0.0.1:${Number(process.env.GMAPS_CLI_API_PORT) || 47833}`;
-const args = process.argv.slice(2);
+
+// Format selection: --text (global) -> GMAPS_CLI_FORMAT -> TTY -> text, else JSON.
+const rawArgs = process.argv.slice(2);
+let forcedText = false;
+const args = [];
+for (const a of rawArgs) {
+  if (a === '--text') { forcedText = true; continue; }
+  args.push(a);
+}
+const envFmt = process.env.GMAPS_CLI_FORMAT;
+let textMode = forcedText;
+if (envFmt === 'text') textMode = true;
+else if (envFmt === 'json') textMode = false;
+else if (envFmt == null || envFmt === '') textMode = textMode || !!process.stdout.isTTY;
+
+function renderText(value, indent = 0) {
+  const pad = '  '.repeat(indent);
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') {
+    const s = value.length > 200 ? value.slice(0, 200) + '…' : value;
+    return pad + s;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') return pad + String(value);
+  if (Array.isArray(value)) {
+    if (value.length === 0) return pad + '(empty)';
+    return value.map((v, i) => `${pad}${i + 1}. ${renderText(v, 0).trimStart()}`).join('\n');
+  }
+  if (typeof value === 'object') {
+    const lines = [];
+    for (const [k, v] of Object.entries(value)) {
+      if (v !== null && typeof v === 'object') {
+        lines.push(`${pad}${k}:`);
+        const nested = renderText(v, indent + 1).trimEnd();
+        if (nested) lines.push(nested);
+      } else {
+        lines.push(`${pad}${k}: ${v === null || v === undefined ? '' : v}`);
+      }
+    }
+    return lines.join('\n');
+  }
+  return pad + String(value);
+}
+
 const command = args.shift();
 async function request(path, init) {
   const r = await fetch(api + path, init);
@@ -11,17 +53,30 @@ async function request(path, init) {
   if (!r.ok) throw new Error(value.error || `HTTP ${r.status}`);
   return value;
 }
+function fail(e) {
+  const msg = e?.cause?.code === 'ECONNREFUSED' ? 'Service unavailable; run gmaps service-start' : (e?.message || String(e));
+  const hint = e?.cause?.code === 'ECONNREFUSED' ? 'run gmaps service-start' : null;
+  if (textMode) {
+    console.error(`Error: ${msg}`);
+    if (hint) console.error(`Hint: ${hint}`);
+  } else {
+    console.error(JSON.stringify({ error: msg }));
+  }
+  process.exitCode = 1;
+}
 try {
   if (!command || command === '--help' || command === '-h') {
     console.log('Usage: gmaps <command> [--option value] [--json JSON]\nCommands: service-start, service-stop, ' + commands.join(', ') + '\nRun gmaps <command> --help for details.');
   } else if ((command === 'service-start' || command === 'service-stop') && (args.includes('--help') || args.includes('-h'))) {
     console.log(`Usage: gmaps ${command}\n${command === 'service-start' ? 'Start the local service if it is not running.' : 'Stop the service when no jobs or requests are active; queued jobs remain saved.'}`);
   } else if (command === 'service-stop') {
-    console.log(JSON.stringify(await request('/stop', { method: 'POST' })));
+    const out = await request('/stop', { method: 'POST' });
+    console.log(textMode ? renderText(out) : JSON.stringify(out, null, 2));
   } else if (command === 'service-start') {
     try {
       await request('/commands');
-      console.log(JSON.stringify({ started: false, alreadyRunning: true }));
+      const out = { started: false, alreadyRunning: true };
+      console.log(textMode ? renderText(out) : JSON.stringify(out, null, 2));
       process.exit(0);
     } catch {}
     const child = spawn(process.execPath, [fileURLToPath(new URL('./index.js', import.meta.url))], { detached: true, stdio: 'ignore', env: process.env });
@@ -31,7 +86,8 @@ try {
       try { await request('/commands'); ready = true; break; } catch { await new Promise(r => setTimeout(r, 100)); }
     }
     if (!ready) throw new Error('Service did not start');
-    console.log(JSON.stringify({ started: true, pid: child.pid }));
+    const out = { started: true, pid: child.pid };
+    console.log(textMode ? renderText(out) : JSON.stringify(out, null, 2));
   } else {
     if (!commands.includes(command)) throw new Error(`Unknown command: ${command}`);
     const name = 'gmaps_' + command.replaceAll('-', '_');
@@ -81,7 +137,7 @@ try {
         input[key] = value;
       }
       const out = await request('/call', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, args: input }) });
-      console.log(JSON.stringify(out, null, 2));
+      console.log(textMode ? renderText(out) : JSON.stringify(out, null, 2));
     }
   }
-} catch (e) { console.error(e.cause?.code === 'ECONNREFUSED' ? 'Service unavailable; run gmaps service-start' : e.message); process.exitCode = 1; }
+} catch (e) { fail(e); }
