@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
+import { execSync } from 'node:child_process';
 import WebSocket, { WebSocketServer } from 'ws';
 import { z } from 'zod';
 import {
@@ -15,6 +16,8 @@ import { ACTIONS_FILE, COMPOSITE, DIR, HANDLERS, LEADS_FILE, Queue, isFinal, isH
 
 // Must match WS_URL in extension/background.js. Env override is for smoke tests.
 const PORT = Number(process.env.GMAPS_CLI_WS_PORT) || 47832;
+const API_PORT = Number(process.env.GMAPS_CLI_API_PORT) || 47833;
+const pidFile = `${DIR}/service.pid`;
 // Must equal extension/manifest.json "version"; bump both together on every change.
 const VERSION = JSON.parse(fs.readFileSync(new URL('./package.json', import.meta.url))).version;
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
@@ -187,12 +190,38 @@ function listen() {
   });
   wss.on('listening', () => {
     wsError = null;
+    try { fs.mkdirSync(DIR, { recursive: true }); fs.writeFileSync(pidFile, String(process.pid), { mode: 0o600 }); } catch {}
     console.error('[gmaps-mcp] primary');
     if (!q) q = new Queue().load(); // recovery of jobs left running happens here
     kick();
   });
   wss.on('error', (e) => {
-    if (e.code === 'EADDRINUSE') return joinHub();
+    if (e.code === 'EADDRINUSE') {
+      // Recognize own service (including old versions without header) via pid-file or lsof.
+      let own = false;
+      try {
+        const pid = Number(fs.readFileSync(pidFile, 'utf8').trim());
+        if (pid && process.kill(pid, 0) === true) {
+          const cmd = execSync(`ps -p ${pid} -o command=`, { encoding: 'utf8' });
+          if (cmd.includes('index.js')) own = true;
+        }
+      } catch {}
+      if (!own) {
+        try {
+          const out = execSync(`lsof -ti tcp:${PORT} -sTCP:LISTEN`, { encoding: 'utf8' }).trim();
+          const pid = out.split('\\n')[0];
+          if (pid) {
+            const cmd = execSync(`ps -p ${pid} -o command=`, { encoding: 'utf8' });
+            if (cmd.includes('index.js')) own = true;
+            else {
+              console.error(`PORT_IN_USE: port ${PORT} is in use by PID ${pid}. Stop that process or set GMAPS_CLI_WS_PORT. Hint: kill ${pid}`);
+              process.exit(1);
+            }
+          }
+        } catch {}
+      }
+      if (own) return joinHub();
+    }
     wsError = e.message;
     console.error(`[gmaps-mcp] WebSocket error: ${wsError}`);
     setTimeout(listen, 5000);
@@ -202,6 +231,7 @@ function listen() {
 if (!process.argv.includes('--catalog')) listen();
 // Exit with the MCP client; otherwise the WebSocket keeps an orphan holding the port.
 if (!process.argv.includes('--catalog')) process.stdin.on('end', () => process.exit(0));
+process.on('exit', () => { try { fs.rmSync(pidFile, { force: true }); } catch {} });
 
 function settle(msg) {
   const p = pending.get(msg.id);
@@ -862,4 +892,13 @@ function catalog() {
     options: Object.entries(spec.inputSchema || {}).map(([key, schema]) => ({ key, required: !schema.isOptional(), description: schema.description, schema: z.toJSONSchema(schema) })) }));
 }
 if (process.argv.includes('--catalog')) process.stdout.write(JSON.stringify(catalog()), () => process.exit(0));
-else api.listen(Number(process.env.GMAPS_CLI_API_PORT) || 47833, '127.0.0.1');
+else {
+  api.listen(API_PORT, '127.0.0.1', () => {});
+  api.on('error', (e) => {
+    if (e.code === 'EADDRINUSE') {
+      console.error(`PORT_IN_USE: API port ${API_PORT} is in use. Stop that process or set GMAPS_CLI_API_PORT. Hint: lsof -ti tcp:${API_PORT}`);
+      process.exit(1);
+    }
+    console.error(`API error: ${e.message}`);
+  });
+}
