@@ -1,0 +1,17 @@
+{
+  "name": "gmaps-cli-bridge",
+  "version": "0.1.14",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "gmaps": "cli.js"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "ws": "^8.22.0",
+    "zod": "^4.6.7"
+  }
+}

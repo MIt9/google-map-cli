@@ -1,0 +1,15 @@
+{
+  "niche": {
+    "type": "choice",
+    "instructions": "What kind of business is described in `state`?",
+    "criteria": {
+      "beauty_and_barber": null,
+      "food_and_drink": null,
+      "health_and_medical": null,
+      "auto_services": null,
+      "home_services": null,
+      "retail": null,
+      "other": null
+    }
+  }
+}

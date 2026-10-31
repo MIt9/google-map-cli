@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>Google Maps CLI Bridge</title>
+  <rect width="128" height="128" rx="30" fill="#142d39"/>
+  <path d="M64 17c-20 0-34 14-34 33 0 24 34 58 34 58s34-34 34-58c0-19-14-33-34-33Z" fill="#65dfbd"/>
+  <circle cx="64" cy="50" r="19" fill="#142d39"/>
+  <path d="m54 43 8 7-8 7m13 0h9" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
