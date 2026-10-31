@@ -2,7 +2,12 @@
 // Talks to the local MCP server over WebSocket and reads Google Maps in ONE dedicated background tab with
 // chrome.scripting.executeScript (no debugger). Read-only: nothing is posted, clicked-through or submitted.
 
-const WS_URL = 'ws://127.0.0.1:47832';
+const DEFAULT_WS_PORT = 47832;
+async function getWsUrl() {
+  const { cliPort } = await chrome.storage.local.get('cliPort');
+  const port = Number(cliPort) || DEFAULT_WS_PORT;
+  return `ws://127.0.0.1:${port}`;
+}
 
 // ---------- WebSocket link to MCP server ----------
 
@@ -13,6 +18,7 @@ const VERSION = chrome.runtime.getManifest().version;
 
 async function connect() {
   if (ws && ws.readyState <= WebSocket.OPEN) return;
+  const WS_URL = await getWsUrl();
   const sock = (ws = new WebSocket(WS_URL));
   sock.onopen = async () => {
     setConnected(true);
@@ -937,6 +943,13 @@ const handlers = {
 
 chrome.alarms.create('keepalive', { periodInMinutes: 0.5 });
 chrome.alarms.onAlarm.addListener(connect);
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.cliPort) {
+    if (ws) { try { ws.close(); } catch {} ws = null; }
+    setConnected(false);
+    connect();
+  }
+});
 chrome.runtime.onMessage.addListener((msg) => { if (msg === 'reconnect') connect(); });
 setConnected(false);
 connect();

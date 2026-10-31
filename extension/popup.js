@@ -60,4 +60,14 @@ chrome.storage.onChanged.addListener(refresh);
 $('clear').onclick = () => chrome.storage.local.set({ history: [] });
 $('resume').onclick = () => chrome.storage.local.remove('halted');
 $('reconnect').onclick = () => chrome.runtime.sendMessage('reconnect').catch(() => {});
+
+chrome.storage.local.get('cliPort').then(({ cliPort }) => {
+  $('port').value = cliPort || 47832;
+});
+$('savePort').onclick = async () => {
+  const port = Number($('port').value);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) { alert('Port must be 1-65535'); return; }
+  await chrome.storage.local.set({ cliPort: port });
+};
+
 refresh();
