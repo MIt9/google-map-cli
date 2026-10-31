@@ -197,7 +197,7 @@ try {
     const spec = specs.find(x => x.name === name);
     if (!spec) throw new Error('Command unavailable in service');
     if (help) {
-      const clean = s => (s || '').replaceAll('~/.gmaps-mcp', '~/.gmaps-cli').replaceAll('~/gmaps-leads', '~/gmaps-cli-leads').replace(/gmaps_([a-z_]+)/g, (_, n) => 'gmaps ' + n.replaceAll('_', '-'));
+      const clean = s => (s || '').replaceAll('~/gmaps-leads', '~/gmaps-cli-leads').replace(/gmaps_([a-z_]+)/g, (_, n) => 'gmaps ' + n.replaceAll('_', '-'));
       console.log(`Usage: gmaps ${command} [options]\n${clean(spec.description)}`);
       for (const opt of spec.options) {
         const s = opt.schema;
