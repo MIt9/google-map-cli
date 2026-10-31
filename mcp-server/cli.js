@@ -66,7 +66,15 @@ function fail(e) {
 }
 try {
   if (!command || command === '--help' || command === '-h') {
-    console.log('Usage: gmaps <command> [--option value] [--json JSON]\nCommands: service-start, service-stop, doctor, config, extension, ' + commands.join(', ') + '\nRun gmaps <command> --help for details.');
+    console.log('Usage: gmaps <command> [--option value] [--json JSON]\nCommands: service-start, service-stop, doctor, config, update, extension, ' + commands.join(', ') + '\nRun gmaps <command> --help for details.');
+  } else if (command === 'update') {
+    const check = args.includes('--check');
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const manifest = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '..', 'extension', 'manifest.json'), 'utf8'));
+    const pkg = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '..', 'package.json'), 'utf8'));
+    const out = { current: pkg.version, extension: manifest.version, match: pkg.version === manifest.version, checkOnly: check };
+    console.log(textMode ? renderText(out) : JSON.stringify(out, null, 2));
   } else if (command === 'extension') {
     const sub = args.shift();
     const fs = await import('node:fs');
